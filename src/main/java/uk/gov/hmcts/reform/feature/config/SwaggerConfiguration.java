@@ -18,6 +18,7 @@ public class SwaggerConfiguration {
     @Primary
     public Docket api() {
         return new Docket(DocumentationType.SWAGGER_2)
+            .groupName("business-api")
             .useDefaultResponseMessages(false)
             .select()
             .apis(RequestHandlerSelectors.basePackage(Application.class.getPackage().getName() + ".controllers"))
