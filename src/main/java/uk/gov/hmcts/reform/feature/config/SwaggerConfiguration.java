@@ -23,6 +23,7 @@ public class SwaggerConfiguration {
             .apis(RequestHandlerSelectors.basePackage(Application.class.getPackage().getName() + ".controllers"))
             .paths(PathSelectors.any())
             .build()
+            .groupName("default")
             .select()
             .apis(RequestHandlerSelectors.basePackage("org.ff4j.spring.boot.web.api.resources"))
             .paths(PathSelectors.any())
