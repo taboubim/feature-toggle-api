@@ -1,5 +1,7 @@
 package uk.gov.hmcts.reform.feature.api;
 
+import io.restassured.specification.RequestSpecification;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import uk.gov.hmcts.reform.feature.BaseTest;
@@ -8,7 +10,18 @@ import uk.gov.hmcts.reform.feature.categories.SmokeTestCategory;
 import java.io.IOException;
 import java.util.UUID;
 
+import static io.restassured.RestAssured.given;
+
 public class ChangeFeatureToggleTest extends BaseTest {
+
+    private RequestSpecification requestSpecification;
+
+    @Before
+    public void setUp() {
+        requestSpecification = given()
+            .spec(jsonRequest)
+            .auth().preemptive().basic(testAdminUser, testAdminPassword);
+    }
 
     @Category(SmokeTestCategory.class)
     @Test
@@ -16,10 +29,10 @@ public class ChangeFeatureToggleTest extends BaseTest {
         //Feature name should be unique in the feature store
         String featureUuid = "smoke-test-" + UUID.randomUUID();
 
-        createFeatureToggle(featureUuid, loadJson("feature-toggle-disabled.json"));
+        createFeatureToggle(featureUuid, loadJson("feature-toggle-disabled.json"), requestSpecification);
 
         //Enable feature toggle
-        requestSpecification()
+        requestSpecification
             .log().uri()
             .and()
             .when()
@@ -28,8 +41,7 @@ public class ChangeFeatureToggleTest extends BaseTest {
             .statusCode(202);
 
         //Delete the created feature
-        requestSpecification()
-            .delete(FF4J_STORE_FEATURES_URL + featureUuid);
+        requestSpecification.delete(FF4J_STORE_FEATURES_URL + featureUuid);
     }
 
     @Category(SmokeTestCategory.class)
@@ -38,10 +50,10 @@ public class ChangeFeatureToggleTest extends BaseTest {
         //Feature name should be unique in the feature store
         String featureUuid = "smoke-test-" + UUID.randomUUID();
 
-        createFeatureToggle(featureUuid, loadJson("feature-toggle-enabled.json"));
+        createFeatureToggle(featureUuid, loadJson("feature-toggle-enabled.json"), requestSpecification);
 
         //Disable feature toggle
-        requestSpecification()
+        requestSpecification
             .log().uri()
             .and()
             .when()
@@ -50,7 +62,6 @@ public class ChangeFeatureToggleTest extends BaseTest {
             .statusCode(202);
 
         //Delete the created feature
-        requestSpecification()
-            .delete(FF4J_STORE_FEATURES_URL + featureUuid);
+        requestSpecification.delete(FF4J_STORE_FEATURES_URL + featureUuid);
     }
 }

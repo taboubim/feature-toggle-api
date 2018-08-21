@@ -1,5 +1,7 @@
 package uk.gov.hmcts.reform.feature.api;
 
+import io.restassured.specification.RequestSpecification;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import uk.gov.hmcts.reform.feature.BaseTest;
@@ -8,7 +10,18 @@ import uk.gov.hmcts.reform.feature.categories.SmokeTestCategory;
 import java.io.IOException;
 import java.util.UUID;
 
+import static io.restassured.RestAssured.given;
+
 public class CreateFeatureToggleTest extends BaseTest {
+
+    private RequestSpecification requestSpecification;
+
+    @Before
+    public void setUp() {
+        requestSpecification = given()
+            .spec(jsonRequest)
+            .auth().preemptive().basic(testAdminUser, testAdminPassword);
+    }
 
     @Category(SmokeTestCategory.class)
     @Test
@@ -18,7 +31,7 @@ public class CreateFeatureToggleTest extends BaseTest {
 
         String createRequestBody = loadJson("feature-toggle-enabled.json");
 
-        requestSpecification()
+        requestSpecification
             .log().uri()
             .and()
             .body(createRequestBody.replace("{uid}", featureUuid))
@@ -28,7 +41,6 @@ public class CreateFeatureToggleTest extends BaseTest {
             .statusCode(201);
 
         //Delete the created feature
-        requestSpecification()
-            .delete(FF4J_STORE_FEATURES_URL + featureUuid);
+        requestSpecification.delete(FF4J_STORE_FEATURES_URL + featureUuid);
     }
 }

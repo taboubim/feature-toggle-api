@@ -2,8 +2,11 @@ package uk.gov.hmcts.reform.feature;
 
 import com.google.common.io.Resources;
 import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.specification.RequestSpecification;
 import org.apache.commons.io.Charsets;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -42,22 +45,39 @@ public abstract class BaseTest {
 
     protected static final String FF4J_WEB_CONSOLE_URL = "ff4j-web-console/";
 
+    protected static final RequestSpecification jsonRequest = new RequestSpecBuilder()
+        .addHeader("accept", "application/json+json")
+        .setContentType("application/json")
+        .build();
+
+
     protected String loadJson(String fileName) throws IOException {
         return Resources.toString(Resources.getResource(fileName), Charsets.UTF_8);
     }
 
-    protected RequestSpecification requestSpecification() {
-        return RestAssured
-            .given()
-            .auth().preemptive().basic(testAdminUser, testAdminPassword)
-            .relaxedHTTPSValidation()
-            .baseUri(this.testUrl)
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-            .header(SyntheticHeaders.SYNTHETIC_TEST_SOURCE, SYNTHETIC_SOURCE_HEADER_VALUE);
+    @Before
+    public void setUpRestAssured() {
+        RestAssured.baseURI = this.testUrl;
+
+        RestAssured.requestSpecification = new RequestSpecBuilder()
+            .addHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+            .addHeader(SyntheticHeaders.SYNTHETIC_TEST_SOURCE, SYNTHETIC_SOURCE_HEADER_VALUE)
+            .build();
+
+        RestAssured.useRelaxedHTTPSValidation();
     }
 
-    protected void createFeatureToggle(String featureUuid, String createRequestBody) {
-        requestSpecification()
+    @After
+    public void tearDown() {
+        RestAssured.reset();
+    }
+
+    protected void createFeatureToggle(
+        String featureUuid,
+        String createRequestBody,
+        RequestSpecification requestSpecification
+    ) {
+        requestSpecification
             .log().uri()
             .and()
             .body(createRequestBody.replace("{uid}", featureUuid))
@@ -65,10 +85,5 @@ public abstract class BaseTest {
             .put(FF4J_STORE_FEATURES_URL + featureUuid)
             .then()
             .statusCode(201);
-    }
-
-    protected void deleteAllFeatures() {
-        requestSpecification()
-            .delete("/api/ff4j/store/clear");
     }
 }

@@ -2,12 +2,12 @@ package uk.gov.hmcts.reform.feature.webconsole;
 
 import io.restassured.http.ContentType;
 import io.restassured.http.Cookies;
-import io.restassured.specification.RequestSpecification;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import uk.gov.hmcts.reform.feature.BaseTest;
 import uk.gov.hmcts.reform.feature.categories.SmokeTestCategory;
 
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.springframework.http.HttpHeaders.LOCATION;
@@ -19,11 +19,10 @@ public class AdminAccessTest extends BaseTest {
     @Category(SmokeTestCategory.class)
     @Test
     public void should_not_allow_access_for_non_admin_user() {
-        RequestSpecification specification = requestSpecification();
-        // Explicitly state that you don't want to use any authentication in this request.
-        specification.auth().none();
 
-        Cookies cookies = specification
+
+        Cookies cookies = given()
+            .spec(jsonRequest)
             .contentType(ContentType.URLENC)
             .formParam("username", testEditorUser)
             .formParam("password", testEditorPassword)
@@ -34,7 +33,8 @@ public class AdminAccessTest extends BaseTest {
             .response()
             .getDetailedCookies();
 
-        specification
+        given()
+            .spec(jsonRequest)
             .cookies(cookies)
             .get(FF4J_WEB_CONSOLE_URL)
             .then()
@@ -45,11 +45,9 @@ public class AdminAccessTest extends BaseTest {
     @Category(SmokeTestCategory.class)
     @Test
     public void should_verify_login_logout_journey() {
-        RequestSpecification specification = requestSpecification();
-        // Explicitly state that you don't want to use any authentication in this request.
-        specification.auth().none();
 
-        Cookies cookies = specification
+        Cookies cookies = given()
+            .spec(jsonRequest)
             .contentType(ContentType.URLENC)
             .formParam("username", testAdminUser)
             .formParam("password", testAdminPassword)
@@ -60,20 +58,23 @@ public class AdminAccessTest extends BaseTest {
             .response()
             .getDetailedCookies();
 
-        specification
+        given()
+            .spec(jsonRequest)
             .cookies(cookies)
             .get(FF4J_WEB_CONSOLE_URL)
             .then()
             .statusCode(OK.value())
             .body("html.head.title", equalTo("FF4J - Home"));
 
-        specification
+        given()
+            .spec(jsonRequest)
             .cookies(cookies)
             .get("/logout")
             .then()
             .statusCode(OK.value());
 
-        specification
+        given()
+            .spec(jsonRequest)
             .cookies(cookies)
             .get(FF4J_WEB_CONSOLE_URL)
             .then()
@@ -83,9 +84,9 @@ public class AdminAccessTest extends BaseTest {
 
     @Test
     public void should_allow_admin_to_login_to_ff4j_web_console() {
-        RequestSpecification specification = requestSpecification();
 
-        String location = specification
+        String location = given()
+            .spec(jsonRequest)
             .contentType(ContentType.URLENC)
             .formParam("username", testAdminUser)
             .formParam("password", testAdminPassword)

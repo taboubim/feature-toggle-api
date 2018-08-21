@@ -1,26 +1,38 @@
 package uk.gov.hmcts.reform.feature.api;
 
 import io.restassured.path.json.JsonPath;
+import io.restassured.specification.RequestSpecification;
+import org.junit.Before;
 import org.junit.Test;
 import uk.gov.hmcts.reform.feature.BaseTest;
 
 import java.io.IOException;
 import java.util.UUID;
 
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class UpdateFeatureToggleTest extends BaseTest {
 
     // TODO:Add Group,Roles and Strategy test cases as part of Security Story
 
+    private RequestSpecification requestSpecification;
+
+    @Before
+    public void setUp() {
+        requestSpecification = given()
+            .spec(jsonRequest)
+            .auth().preemptive().basic(testAdminUser, testAdminPassword);
+    }
+
     @Test
     public void should_successfully_update_feature_toggle_description_in_feature_store() throws IOException {
         String featureUuid = UUID.randomUUID().toString();
 
-        createFeatureToggle(featureUuid, loadJson("feature-toggle-disabled.json"));
+        createFeatureToggle(featureUuid, loadJson("feature-toggle-disabled.json"), requestSpecification);
 
         //Update feature toggle description
-        requestSpecification()
+        requestSpecification
             .log().uri()
             .and()
             .body(loadJson("feature-toggle-update.json").replace("{uid}", featureUuid))
@@ -28,7 +40,7 @@ public class UpdateFeatureToggleTest extends BaseTest {
             .put(FF4J_STORE_FEATURES_URL + featureUuid);
 
         //Retrieve updated feature toggle
-        JsonPath jsonPath = requestSpecification()
+        JsonPath jsonPath = requestSpecification
             .get(FF4J_STORE_FEATURES_URL + featureUuid).jsonPath();
 
         assertThat(jsonPath.getString("uid")).isEqualTo(featureUuid);
@@ -36,7 +48,6 @@ public class UpdateFeatureToggleTest extends BaseTest {
         assertThat(jsonPath.getString("description")).isEqualTo("Updated feature toggle description for test");
 
         //Delete the created feature
-        requestSpecification()
-            .delete(FF4J_STORE_FEATURES_URL + featureUuid);
+        requestSpecification.delete(FF4J_STORE_FEATURES_URL + featureUuid);
     }
 }

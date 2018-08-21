@@ -1,7 +1,8 @@
 package uk.gov.hmcts.reform.feature.api;
 
-import io.restassured.RestAssured;
 import io.restassured.path.json.JsonPath;
+import io.restassured.specification.RequestSpecification;
+import org.junit.Before;
 import org.junit.Test;
 import org.springframework.http.HttpStatus;
 import uk.gov.hmcts.reform.feature.BaseTest;
@@ -9,17 +10,27 @@ import uk.gov.hmcts.reform.feature.BaseTest;
 import java.io.IOException;
 import java.util.UUID;
 
+import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class DeleteFeatureToggleTest extends BaseTest {
+
+    private RequestSpecification requestSpecification;
+
+    @Before
+    public void setUp() {
+        requestSpecification = given()
+            .spec(jsonRequest)
+            .auth().preemptive().basic(testAdminUser, testAdminPassword);
+    }
 
     @Test
     public void should_successfully_delete_feature_toggle_from_feature_store() throws IOException {
         String featureUuid = UUID.randomUUID().toString();
 
-        createFeatureToggle(featureUuid, loadJson("feature-toggle-disabled.json"));
+        createFeatureToggle(featureUuid, loadJson("feature-toggle-disabled.json"), requestSpecification);
 
-        int statusCode = requestSpecification()
+        int statusCode = requestSpecification
             .delete(FF4J_STORE_FEATURES_URL + featureUuid)
             .getStatusCode();
 
@@ -28,7 +39,7 @@ public class DeleteFeatureToggleTest extends BaseTest {
 
     @Test
     public void should_return_response_containing_404_error_when_feature_does_not_exists_in_feature_store() {
-        JsonPath jsonPath = requestSpecification()
+        JsonPath jsonPath = requestSpecification
             .delete(FF4J_STORE_FEATURES_URL + "doesnotexist").jsonPath();
 
         assertThat(jsonPath.getInt("status")).isEqualTo(404);
@@ -38,21 +49,23 @@ public class DeleteFeatureToggleTest extends BaseTest {
 
     @Test
     public void should_allow_to_create_update_and_delete_feature_with_editor_access_levels() throws IOException {
-        RestAssured.authentication = RestAssured.preemptive().basic(testEditorUser, testEditorPassword);
+        RequestSpecification editorReqSpec = given()
+            .spec(jsonRequest)
+            .auth().preemptive().basic(testEditorUser, testEditorPassword);
 
         String featureUuid = UUID.randomUUID().toString();
 
-        createFeatureToggle(featureUuid, loadJson("feature-toggle-disabled.json"));
+        createFeatureToggle(featureUuid, loadJson("feature-toggle-disabled.json"), editorReqSpec);
 
         //Retrieve updated feature toggle
-        JsonPath jsonPath1 = requestSpecification()
+        JsonPath jsonPath1 = editorReqSpec
             .get(FF4J_STORE_FEATURES_URL + featureUuid).jsonPath();
 
         assertThat(jsonPath1.getString("uid")).isEqualTo(featureUuid);
         assertThat(jsonPath1.getBoolean("enable")).isFalse();
         assertThat(jsonPath1.getString("description")).isEqualTo("Feature toggle for test");
 
-        requestSpecification()
+        editorReqSpec
             .log().uri()
             .and()
             .when()
@@ -61,14 +74,14 @@ public class DeleteFeatureToggleTest extends BaseTest {
             .statusCode(202);
 
         //Retrieve updated feature toggle
-        JsonPath jsonPath2 = requestSpecification()
+        JsonPath jsonPath2 = editorReqSpec
             .get(FF4J_STORE_FEATURES_URL + featureUuid).jsonPath();
 
         assertThat(jsonPath2.getString("uid")).isEqualTo(featureUuid);
         assertThat(jsonPath2.getBoolean("enable")).isTrue();
         assertThat(jsonPath2.getString("description")).isEqualTo("Feature toggle for test");
 
-        requestSpecification()
+        editorReqSpec
             .delete(FF4J_STORE_FEATURES_URL + featureUuid)
             .then()
             .statusCode(HttpStatus.NO_CONTENT.value());

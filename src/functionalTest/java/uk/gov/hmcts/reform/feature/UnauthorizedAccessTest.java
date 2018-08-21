@@ -4,6 +4,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import uk.gov.hmcts.reform.feature.categories.SmokeTestCategory;
 
+import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
@@ -13,7 +14,8 @@ public class UnauthorizedAccessTest extends BaseTest {
     @Category(SmokeTestCategory.class)
     @Test
     public void should_restrict_anonymous_access_to_api_ff4j() {
-        requestSpecification()
+        given()
+            .spec(jsonRequest)
             .auth().none()
             .delete(FF4J_STORE_FEATURES_URL + "doesnotexist")
             .then()
@@ -23,7 +25,8 @@ public class UnauthorizedAccessTest extends BaseTest {
     @Category(SmokeTestCategory.class)
     @Test
     public void should_restrict_anonymous_access_to_ff4j_web_console() {
-        requestSpecification()
+        given()
+            .spec(jsonRequest)
             .auth().none()
             .get(FF4J_WEB_CONSOLE_URL)
             .then()
@@ -35,7 +38,8 @@ public class UnauthorizedAccessTest extends BaseTest {
     @Category(SmokeTestCategory.class)
     @Test
     public void should_restrict_access_for_user_to_access_ff4j_web_console() {
-        requestSpecification()
+        given()
+            .spec(jsonRequest)
             .auth().preemptive().basic(testEditorUser, testEditorPassword)
             .get(FF4J_WEB_CONSOLE_URL)
             .then()
