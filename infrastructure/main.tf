@@ -1,9 +1,5 @@
 provider "azurerm" {}
 
-provider "vault" {
-  address = "https://vault.reform.hmcts.net:6200"
-}
-
 # Make sure the resource group exists
 resource "azurerm_resource_group" "rg" {
   name     = "${var.product}-${var.component}-${var.env}"
@@ -22,16 +18,31 @@ locals {
   nonPreviewVaultName    = "${var.product}-ft-api-${var.env}"
   vaultName              = "${(var.env == "preview" || var.env == "spreview") ? local.previewVaultName : local.nonPreviewVaultName}"
 
+  # URI of vault that stores long-term secrets. It's the app's own Key Vault, except for (s)preview,
+  # where vaults are short-lived and can only store secrets generated during deployment
+  permanent_vault_uri    = "https://${var.raw_product}-ft-api-${local.local_env}.vault.azure.net/"
+
   cmcPreviewVaultName = "cmc-aat"
   cmcNonPreviewVaultName = "cmc-${var.env}"
   cmcVaultName = "${(var.env == "preview" || var.env == "spreview") ? local.cmcPreviewVaultName : local.cmcNonPreviewVaultName}"
 
+
+  divorcePreviewVaultName = "div-aat"
+  divorceNonPreviewVaultName = "div-${var.env}"
+  divorceVaultName = "${(var.env == "preview" || var.env == "spreview") ? local.divorcePreviewVaultName : local.divorceNonPreviewVaultName}"
+
+  probatePreviewVaultName = "probate-aat"
+  probateNonPreviewVaultName = "probate-${var.env}"
+  probateVaultName = "${(var.env == "preview" || var.env == "spreview") ? local.probatePreviewVaultName : local.probateNonPreviewVaultName}"
+
   db_connection_options  = "?ssl=true"
 
-  test_admin_user        = "${data.vault_generic_secret.test-admin-user.data["value"]}"
-  test_admin_password    = "${data.vault_generic_secret.test-admin-password.data["value"]}"
-  test_editor_user       = "${data.vault_generic_secret.test-editor-user.data["value"]}"
-  test_editor_password   = "${data.vault_generic_secret.test-editor-password.data["value"]}"
+  test_admin_user        = "${data.azurerm_key_vault_secret.source-test-admin-user.value}"
+  test_admin_password    = "${data.azurerm_key_vault_secret.source-test-admin-password.value}"
+  test_editor_user       = "${data.azurerm_key_vault_secret.source-test-editor-user.value}"
+  test_editor_password   = "${data.azurerm_key_vault_secret.source-test-editor-password.value}"
+
+  sku_size = "${var.env == "prod" || var.env == "sprod" || var.env == "aat" ? "I2" : "I1"}"
 }
 
 module "feature-toggle-db" {
@@ -58,6 +69,9 @@ module "feature-toggle-api" {
   additional_host_name = "${var.env != "preview" ? var.external_host_name : "null"}"
   is_frontend          = "${var.env != "preview" ? 1: 0}"
   common_tags          = "${var.common_tags}"
+  asp_name             = "${var.product}-${var.component}-${var.env}"
+  asp_rg               = "${var.product}-${var.component}-${var.env}"
+  instance_size        = "${local.sku_size}"
 
   app_settings = {
     FEATURES_DB_HOST            = "${module.feature-toggle-db.host_name}"
@@ -69,14 +83,25 @@ module "feature-toggle-api" {
     FLYWAY_URL                  = "jdbc:postgresql://${module.feature-toggle-db.host_name}:${module.feature-toggle-db.postgresql_listen_port}/${module.feature-toggle-db.postgresql_database}${local.db_connection_options}"
     FLYWAY_USER                 = "${module.feature-toggle-db.user_name}"
     FLYWAY_PASSWORD             = "${module.feature-toggle-db.postgresql_password}"
-    TEST_ADMIN_USERNAME         = "${local.test_admin_user}"
-    TEST_ADMIN_PASSWORD         = "${local.test_admin_password}"
-    TEST_EDITOR_USERNAME        = "${local.test_editor_user}"
-    TEST_EDITOR_PASSWORD        = "${local.test_editor_password}"
-    CMC_ADMIN_USERNAME          = "${data.azurerm_key_vault_secret.cmc_admin_username.value}"
-    CMC_ADMIN_PASSWORD          = "${data.azurerm_key_vault_secret.cmc_admin_password.value}"
-    CMC_EDITOR_USERNAME         = "${data.azurerm_key_vault_secret.cmc_editor_username.value}"
-    CMC_EDITOR_PASSWORD         = "${data.azurerm_key_vault_secret.cmc_editor_password.value}"
+    ADMIN_USERNAME_TEST         = "${local.test_admin_user}"
+    ADMIN_PASSWORD_TEST         = "${local.test_admin_password}"
+    EDITOR_USERNAME_TEST        = "${local.test_editor_user}"
+    EDITOR_PASSWORD_TEST        = "${local.test_editor_password}"
+    ADMIN_USERNAME_CMC          = "${data.azurerm_key_vault_secret.admin_username_cmc.value}"
+    ADMIN_PASSWORD_CMC          = "${data.azurerm_key_vault_secret.admin_password_cmc.value}"
+    EDITOR_USERNAME_CMC         = "${data.azurerm_key_vault_secret.editor_username_cmc.value}"
+    EDITOR_PASSWORD_CMC         = "${data.azurerm_key_vault_secret.editor_password_cmc.value}"
+
+    ADMIN_USERNAME_DIVORCE      = "${data.azurerm_key_vault_secret.admin_username_divorce.value}"
+    ADMIN_PASSWORD_DIVORCE      = "${data.azurerm_key_vault_secret.admin_password_divorce.value}"
+    EDITOR_USERNAME_DIVORCE     = "${data.azurerm_key_vault_secret.editor_username_divorce.value}"
+    EDITOR_PASSWORD_DIVORCE     = "${data.azurerm_key_vault_secret.editor_password_divorce.value}"
+
+    ADMIN_USERNAME_PROBATE      = "${data.azurerm_key_vault_secret.admin_username_probate.value}"
+    ADMIN_PASSWORD_PROBATE      = "${data.azurerm_key_vault_secret.admin_password_probate.value}"
+    EDITOR_USERNAME_PROBATE     = "${data.azurerm_key_vault_secret.editor_username_probate.value}"
+    EDITOR_PASSWORD_PROBATE     = "${data.azurerm_key_vault_secret.editor_password_probate.value}"
+
     // silence the "bad implementation" logs
     LOGBACK_REQUIRE_ALERT_LEVEL = false
     LOGBACK_REQUIRE_ERROR_CODE  = false
