@@ -4,8 +4,8 @@
 import uk.gov.hmcts.contino.GradleBuilder
 
 def type = "java"
-def product = "rpe"
-def component = "feature-toggle-api"
+def product = "rpe2"
+def component = "feature-toggle-ap"
 
 def channel = '#rpe-build-notices'
 
