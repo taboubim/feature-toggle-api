@@ -1,6 +1,6 @@
 #!groovy
 
-@Library("Infrastructure")
+@Library("Infrastructure@test-database")
 import uk.gov.hmcts.contino.GradleBuilder
 
 def type = "java"
